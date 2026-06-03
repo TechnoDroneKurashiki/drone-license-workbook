@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理者画面｜二等ドローン学科クイズ</title>
+<style>
+  :root{ --accent:#2563eb; --bg:#eef2f7; --card:#fff; --ink:#0f172a; --mut:#64748b; --line:#e2e8f0; --ok:#16a34a; --ng:#dc2626; }
+  *{ box-sizing:border-box; } body{ margin:0; background:var(--bg); color:var(--ink);
+     font-family:"Yu Gothic","Hiragino Kaku Gothic ProN","Meiryo",system-ui,sans-serif; line-height:1.7; }
+  .top{ background:var(--card); border-bottom:1px solid var(--line); }
+  .top .in{ max-width:1040px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; gap:12px; }
+  .logo{ width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:20px; }
+  .brand b{ display:block;font-size:1rem;line-height:1.3 } .brand span{ font-size:.74rem;color:var(--mut) }
+  .top .r{ margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.85rem;color:var(--mut) }
+  .wrap{ max-width:1040px; margin:0 auto; padding:26px 18px 70px; }
+  h1{ font-size:1.5rem; font-weight:800; margin:6px 0 16px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 2px 10px rgba(15,23,42,.04); }
+  label{ display:block;font-size:.82rem;color:var(--mut);margin:12px 0 5px }
+  input{ width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink) }
+  .btn{ border:none;border-radius:11px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;padding:12px 18px;font:inherit;margin-top:14px }
+  .btn.sec{ background:#e2e8f0;color:var(--ink) }
+  .stat{ display:flex;gap:28px;flex-wrap:wrap;margin-bottom:18px }
+  .stat b{ display:block;font-size:1.7rem;font-weight:800 } .stat span{ font-size:.78rem;color:var(--mut) }
+  table{ width:100%;border-collapse:collapse;font-size:.86rem }
+  th,td{ text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap }
+  th{ color:var(--mut);font-size:.78rem;font-weight:700 }
+  tr:hover td{ background:#f8fafc }
+  .pill{ font-size:.72rem;padding:2px 8px;border-radius:99px;font-weight:700 }
+  .pill.ok{ background:#dcfce7;color:var(--ok) } .pill.no{ background:#fee2e2;color:var(--ng) }
+  .pill.adm{ background:#dbeafe;color:var(--accent) }
+  .msg{ margin:8px 0;padding:10px 12px;border-radius:9px;font-size:.86rem }
+  .msg.err{ background:#fef2f2;color:var(--ng) } .msg.ok{ background:#f0fdf4;color:var(--ok) }
+  .tools{ display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap }
+  .tools input{ max-width:280px }
+  .hide{ display:none!important }
+  a{ color:var(--accent) }
+  .scroll{ overflow:auto }
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div class="logo">✦</div>
+  <div class="brand"><b>管理者画面</b><span>二等ドローン学科クイズ</span></div>
+  <div class="r"><span id="who"></span>
+    <a href="index.html">クイズへ</a>
+    <button class="btn sec" id="logout" style="margin:0;padding:7px 12px;font-size:.8rem;display:none">ログアウト</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <!-- 未ログイン時：管理者ログイン -->
+  <div id="login" class="card hide" style="max-width:440px;margin:34px auto 0">
+    <h2 style="margin-top:0">管理者ログイン</h2>
+    <div id="lmsg"></div>
+    <label>メールアドレス</label><input id="email" type="email" placeholder="admin@example.com">
+    <label>パスワード</label><input id="pw" type="password">
+    <button class="btn" id="loginBtn" style="width:100%">ログイン</button>
+    <p style="font-size:.8rem;color:var(--mut);margin-top:12px">※ 管理者権限のあるアカウントのみ閲覧できます。</p>
+  </div>
+
+  <!-- 設定未完了 -->
+  <div id="setup" class="card hide" style="margin-top:24px">
+    <h2 style="margin-top:0">⚙️ セットアップが未完了です</h2>
+    <p><code>config.js</code> に Supabase の接続情報を設定してください（詳細は <code>docs/SETUP_AUTH.md</code>）。</p>
+  </div>
+
+  <!-- 一覧 -->
+  <div id="panel" class="hide">
+    <h1>登録アカウント一覧</h1>
+    <div class="card">
+      <div class="stat">
+        <div><b id="cTotal">0</b><span>登録者数</span></div>
+        <div><b id="cConfirmed">0</b><span>メール確認済み</span></div>
+        <div><b id="cAdmin">0</b><span>管理者</span></div>
+      </div>
+      <div class="tools">
+        <input id="q" placeholder="氏名・メールで絞り込み">
+        <button class="btn sec" id="reload" style="margin:0;padding:9px 14px;font-size:.85rem">再読み込み</button>
+        <button class="btn sec" id="csv" style="margin:0;padding:9px 14px;font-size:.85rem">CSVダウンロード</button>
+      </div>
+      <div id="pmsg"></div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>氏名</th><th>メール</th><th>権限</th><th>メール確認</th><th>登録日時</th><th>最終ログイン</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML;}
+  function note(el,t,k){el.innerHTML='<div class="msg '+(k||"")+'">'+esc(t)+'</div>';}
+  function fmt(ts){ if(!ts) return "—"; var d=new Date(ts);
+    return d.getFullYear()+"/"+("0"+(d.getMonth()+1)).slice(-2)+"/"+("0"+d.getDate()).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+
+  if(!window.SUPA_URL || /ここに/.test(window.SUPA_URL) || !window.supabase){ $("setup").classList.remove("hide"); return; }
+  var sb=window.supabase.createClient(window.SUPA_URL, window.SUPA_ANON);
+  var DATA=[];
+
+  function showLogin(){ $("panel").classList.add("hide"); $("login").classList.remove("hide"); $("logout").style.display="none"; $("who").textContent=""; }
+  function showPanel(user){ $("login").classList.add("hide"); $("panel").classList.remove("hide"); $("logout").style.display="inline-block";
+    $("who").textContent=((user.user_metadata&&user.user_metadata.full_name)||user.email)+" さん"; load(); }
+
+  function gate(){
+    sb.auth.getSession().then(function(r){
+      if(r.data.session&&r.data.session.user){ showPanel(r.data.session.user); } else { showLogin(); }
+    });
+  }
+
+  $("loginBtn").onclick=function(){
+    var email=$("email").value.trim(), pw=$("pw").value;
+    if(!email||!pw){ note($("lmsg"),"メールアドレスとパスワードを入力してください。","err"); return; }
+    note($("lmsg"),"確認中…");
+    sb.auth.signInWithPassword({email:email,password:pw}).then(function(r){
+      if(r.error){ note($("lmsg"),"ログインできませんでした。","err"); return; }
+      showPanel(r.data.user);
+    });
+  };
+  $("logout").onclick=function(){ sb.auth.signOut().then(showLogin); };
+  $("reload").onclick=load;
+  $("q").oninput=render;
+  $("csv").onclick=downloadCsv;
+
+  function load(){
+    note($("pmsg"),"読み込み中…");
+    sb.rpc("admin_list_users").then(function(r){
+      if(r.error){
+        if(/forbidden/i.test(r.error.message)){ note($("pmsg"),"このアカウントには管理者権限がありません。","err"); }
+        else { note($("pmsg"),"取得に失敗しました："+r.error.message,"err"); }
+        DATA=[]; render(); return;
+      }
+      DATA=r.data||[]; $("pmsg").innerHTML=""; render();
+    });
+  }
+
+  function render(){
+    var kw=$("q").value.trim().toLowerCase();
+    var list=DATA.filter(function(u){
+      if(!kw) return true;
+      return ((u.full_name||"").toLowerCase().indexOf(kw)>=0)||((u.email||"").toLowerCase().indexOf(kw)>=0);
+    });
+    $("cTotal").textContent=DATA.length;
+    $("cConfirmed").textContent=DATA.filter(function(u){return u.email_confirmed_at;}).length;
+    $("cAdmin").textContent=DATA.filter(function(u){return u.role==="admin";}).length;
+    $("rows").innerHTML=list.map(function(u){
+      return "<tr><td>"+esc(u.full_name||"—")+"</td><td>"+esc(u.email||"—")+"</td>"+
+        "<td>"+(u.role==="admin"?'<span class="pill adm">管理者</span>':'一般')+"</td>"+
+        "<td>"+(u.email_confirmed_at?'<span class="pill ok">確認済み</span>':'<span class="pill no">未確認</span>')+"</td>"+
+        "<td>"+fmt(u.created_at)+"</td><td>"+fmt(u.last_sign_in_at)+"</td></tr>";
+    }).join("") || '<tr><td colspan="6" style="color:var(--mut)">該当するアカウントがありません。</td></tr>';
+  }
+
+  function downloadCsv(){
+    var head=["氏名","メール","権限","メール確認","登録日時","最終ログイン"];
+    var rows=DATA.map(function(u){ return [u.full_name||"", u.email||"", u.role, u.email_confirmed_at?"確認済み":"未確認", fmt(u.created_at), fmt(u.last_sign_in_at)]; });
+    var csv=[head].concat(rows).map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(","); }).join("\r\n");
+    var blob=new Blob(["﻿"+csv],{type:"text/csv"});
+    var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="accounts.csv"; a.click();
+  }
+
+  sb.auth.onAuthStateChange(function(ev,session){ if(ev==="SIGNED_OUT") showLogin(); });
+  gate();
+})();
+</script>
+</body>
+</html>

@@ -153,9 +153,17 @@ HTML = r'''<!DOCTYPE html>
     <button class="dot" data-t="teal"   style="background:#0d9488" title="ティール"></button>
     <button class="dot" data-t="orange" style="background:#ea580c" title="オレンジ"></button>
   </div>
+  <div id="acctbar" style="display:none;align-items:center;gap:10px">
+    <span id="acct" style="font-size:.8rem;color:var(--mut);font-weight:600"></span>
+    <button id="logout" class="btn sec" style="width:auto;margin:0;padding:6px 12px;font-size:.8rem">ログアウト</button>
+  </div>
 </div></div>
 
 <div class="wrap">
+
+  <div id="authgate"></div>
+
+  <div id="app" style="display:none">
 
   <!-- ===== HOME ===== -->
   <div id="home">
@@ -235,6 +243,8 @@ HTML = r'''<!DOCTYPE html>
     </div>
   </div>
 
+  </div><!-- /#app -->
+
   <footer>
     学習用に独自作成したものであり、実際の試験問題とは異なります。<br>
     進捗はこの端末・ブラウザ内（localStorage）にのみ保存されます。<br>
@@ -242,6 +252,8 @@ HTML = r'''<!DOCTYPE html>
   </footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <script>
 const DATA = __DATA__;
 const CHAPTERS=[
@@ -398,6 +410,7 @@ $('shQs').onchange =function(e){ settings.shuffleQs =e.target.checked; LS.set('d
 applyTheme(theme);
 renderHome();
 </script>
+<script src="auth.js"></script>
 </body>
 </html>
 '''

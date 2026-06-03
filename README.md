@@ -36,6 +36,13 @@ GitHub Pages で公開しています。
 drone-license-workbook/
 ├── index.html                      … クイズ（GitHub Pages のトップ）
 ├── 二等ドローン学科クイズ.html        … クイズ（同内容）
+├── 管理者画面.html                   … 管理者用・登録アカウント一覧
+├── config.js                       … Supabase 接続設定（URL／anonキーを記入）
+├── auth.js                         … ログイン／登録／メール認証／パスワード再設定
+├── db/
+│   └── schema.sql                  … Supabase のテーブル・権限・関数
+├── docs/
+│   └── SETUP_AUTH.md               … ログイン機能のセットアップ手順
 ├── data/
 │   └── questions.json              … 全200問のデータ（id／科目／問題／選択肢／正解／解説）
 ├── workbook/
@@ -62,6 +69,18 @@ drone-license-workbook/
   問題1〜200 を先に並べ、末尾に「解答・解説」をまとめて掲載。模試形式向け。
 
 Markdown 版・Word 版のどちらも内容は同一です。
+
+## 🔐 ログイン機能（Supabase）
+
+会員登録（メール／パスワード／氏名）＋メール認証（マジックリンク）＋パスワード再設定＋管理画面を備えています。
+認証基盤は **Supabase**（無料枠あり）を利用し、フロントは GitHub Pages のまま動作します。
+
+- 利用にはログインが必要（未ログインではクイズを表示しません）
+- パスワード要件：8文字以上・大文字・数字・記号を各1つ以上
+- 管理者は `管理者画面.html` で登録アカウントを一覧／CSV出力できます
+
+**セットアップは [docs/SETUP_AUTH.md](docs/SETUP_AUTH.md) を参照**してください
+（Supabaseプロジェクト作成 → `config.js` に接続情報 → `db/schema.sql` 実行 → メール設定）。
 
 ## 🛠 自分でビルドする場合
 
