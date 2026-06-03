@@ -49,7 +49,6 @@ drone-license-workbook/
 │   ├── merge_and_check.py          … 統合版生成＋論点重複チェック
 │   ├── build_separated.py          … 解答分離型の生成
 │   └── build_quiz.py               … クイズHTML／questions.json の生成
-├── drone-license-workbook.zip      … 成果物一式のダウンロード用アーカイブ
 └── README.md
 ```
 

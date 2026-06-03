@@ -2,6 +2,9 @@
 sources/
 *.pdf
 
+# 配布用アーカイブ（リポジトリには含めない）
+drone-license-workbook.zip
+
 # OS / エディタ
 Thumbs.db
 .DS_Store
