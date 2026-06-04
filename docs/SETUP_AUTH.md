@@ -63,9 +63,18 @@ window.SUPA_ANON = "eyJhbGciOi...(anon public キー)...";
    ```
    ※ ローカル動作確認をする場合は `http://localhost:....` も追加。
 
-## 6. メール文面を設定（任意・推奨）
+## 6. メール文面を設定（任意・あとからでOK）
 
-**Authentication → Emails → Templates** で、各テンプレートを下記に置き換えると日本語の案内になります。
+> ⚠️ **重要**：**Authentication → Emails → Templates** を開くと
+> 「**Set up custom SMTP to edit templates**」と表示され、**既定のままでは件名・本文を編集できません**。
+> テンプレートの編集には独自SMTP（Resend／SendGrid／Amazon SES 等）の設定が必要です。
+>
+> - **編集しなくても、確認メール・再設定メールは英語の既定テンプレートで正常に送信・機能します。**
+>   まずはこのまま動作確認し、日本語化は後回しでOKです。
+> - 日本語化する場合：このページ右上の **「Set up SMTP」** から独自SMTPを設定 →
+>   その後、各テンプレートの件名・本文が編集可能になるので、下記を貼り付けてください。
+
+各テンプレートを下記に置き換えると日本語の案内になります。
 （`{{ .ConfirmationURL }}` `{{ .Email }}` はそのまま残してください）
 
 ### ■ Confirm signup（新規登録の確認）
