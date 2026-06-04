@@ -247,7 +247,6 @@ HTML = r'''<!DOCTYPE html>
 
   <footer>
     学習用に独自作成したものであり、実際の試験問題とは異なります。<br>
-    進捗はこの端末・ブラウザ内（localStorage）にのみ保存されます。<br>
     © 2026 TechnoDroneKurashiki ／ <a href="https://github.com/TechnoDroneKurashiki/drone-license-workbook">GitHub</a>
   </footer>
 </div>
