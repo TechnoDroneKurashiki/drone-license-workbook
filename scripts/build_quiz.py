@@ -48,9 +48,9 @@ HTML = r'''<!DOCTYPE html>
   /* dashboard stats */
   .dash{ display:flex; align-items:center; gap:26px; flex-wrap:wrap; }
   .ring{ position:relative; width:104px; height:104px; flex:none; }
-  .ring .lab{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; }
-  .ring .lab b{ font-size:1.5rem; font-weight:800; }
-  .ring .lab span{ font-size:.7rem; color:var(--mut); }
+  .ring .lab{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; line-height:1.1; }
+  .ring .lab b{ font-size:1.3rem; font-weight:800; line-height:1.05; }
+  .ring .lab span{ font-size:.66rem; color:var(--mut); line-height:1; margin-top:1px; }
   .stats{ display:flex; gap:30px; flex-wrap:wrap; }
   .stat b{ display:block; font-size:1.7rem; font-weight:800; }
   .stat b small{ font-size:.8rem; color:var(--mut); font-weight:600; }
