@@ -37,6 +37,8 @@ window.SUPA_ANON = "eyJhbGciOi...(anon public キー)...";
 1. ダッシュボード **SQL Editor → New query**。
 2. リポジトリの `db/schema.sql` の中身をすべて貼り付けて **Run**。
    （`profiles` テーブル・自動作成トリガ・権限ポリシー・管理画面用関数が作られます）
+3. 続けて `db/progress_schema.sql` も同様に貼り付けて **Run**。
+   （学習状況・認定テストの進捗を保存する `user_progress` テーブルと、管理画面の進捗一覧用関数が作られます）
 
 ## 4. メール認証を有効化
 

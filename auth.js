@@ -63,6 +63,7 @@
 
   // ---------- 画面：ログイン ----------
   function renderLogin() {
+    window.__user = null;
     show(shell("ログイン",
       field("li_email", "メールアドレス", "email", "you@example.com") +
       field("li_pw", "パスワード", "password", "") +
@@ -185,6 +186,8 @@
 
   // ---------- アプリ表示 ----------
   function enterApp(user) {
+    window.__user = user;
+    if (typeof window.DQonAuth === "function") { try { window.DQonAuth(user); } catch (e) {} }
     gate.style.display = "none";
     gate.innerHTML = "";
     app.style.display = "block";
