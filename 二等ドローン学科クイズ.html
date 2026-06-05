@@ -164,6 +164,18 @@
     <h1 class="title">二等 無人航空機操縦士 学科対策</h1>
     <p class="lead">全200問・三肢択一。1問ずつ解いてその場で解説を確認できます。</p>
 
+    <div class="sec-h" style="margin-top:6px">認定テスト <small>4科目×10問＝40問。間違えた問題を全問正解するまで反復して修了</small></div>
+    <div class="card" id="testcard" style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <span id="testStatus" class="tpill none">未受験</span>
+        <div class="stats">
+          <div class="stat"><b id="tAttempts">0</b><span>修了回数</span></div>
+          <div class="stat"><b id="tBest">–</b><span>初回正答（最高）</span></div>
+        </div>
+        <button class="btn" style="width:auto;margin:0;margin-left:auto" onclick="startTest()">認定テストを開始</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="dash">
         <div class="ring">
@@ -180,18 +192,6 @@
           <div class="stat"><b id="lastok">0</b><span>直近で正解</span></div>
           <div class="stat warn"><b id="todo">0</b><span>要復習</span></div>
         </div>
-      </div>
-    </div>
-
-    <div class="sec-h">認定テスト <small>4科目×10問＝40問。全問正解で合格（不合格なら新しい40問で再テスト）</small></div>
-    <div class="card" id="testcard">
-      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
-        <span id="testStatus" class="tpill none">未受験</span>
-        <div class="stats">
-          <div class="stat"><b id="tAttempts">0</b><span>受験回数</span></div>
-          <div class="stat"><b id="tBest">–</b><span>最高得点</span></div>
-        </div>
-        <button class="btn" style="width:auto;margin:0;margin-left:auto" onclick="startTest()">認定テストを開始</button>
       </div>
     </div>
 
@@ -278,6 +278,7 @@ let progress = LS.get('dq_progress', {});   // {id:{a,c,last:'o'|'x'}}
 let theme    = LS.get('dq_theme','blue');
 
 let session=[], idx=0, score=0, sessionWrong=[], lastSession=null, isTest=false;
+let testRound=1, testFirstScore=0, testFirstDetail=null;
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
@@ -364,10 +365,25 @@ function buildTest(){
     return {id:q.id,chapter:q.chapter,stem:q.stem,explanation:q.explanation,
             opts:os.map(function(o){return o.t;}),ans:os.findIndex(function(o){return o.c;})+1};
   });
-  isTest=true; idx=0; score=0; sessionWrong=[];
+  isTest=true; testRound=1; testFirstScore=0; testFirstDetail=null;
+  idx=0; score=0; sessionWrong=[];
   return true;
 }
 function startTest(){ lastSession=function(){return buildTest();}; run(); }
+// 間違えた問題だけを再挑戦（B方式：その回で全問正解するまで反復）
+function retryWrong(){
+  const wrong=sessionWrong.slice();
+  session=wrong.map(function(w){
+    const q=DATA.find(function(d){return d.id===w.id;});
+    let os=q.options.map(function(t,i){return {t:t,c:(i+1)===q.answer};});
+    shuffle(os);
+    return {id:q.id,chapter:q.chapter,stem:q.stem,explanation:q.explanation,
+            opts:os.map(function(o){return o.t;}),ans:os.findIndex(function(o){return o.c;})+1};
+  });
+  shuffle(session);
+  testRound++; idx=0; score=0; sessionWrong=[];
+  show('quiz'); renderQ();
+}
 function startChapter(key){ lastSession=function(){return buildSession(DATA.filter(q=>q.chapter===key),true,false);}; run(); }
 function startMini(){ lastSession=function(){return buildSession(DATA,true,false);}; run(); }
 function startAll(){ lastSession=function(){return buildSession(DATA,false,false);}; run(); }
@@ -416,7 +432,7 @@ function nextQ(){ idx++; if(idx<session.length) renderQ(); else showResult(); }
 function showResult(){
   if(isTest){ showTestResult(); return; }
   show('result');
-  $('retryBtn').style.display=''; $('retryBtn').textContent='もう一度';
+  $('retryBtn').style.display=''; $('retryBtn').textContent='もう一度'; $('retryBtn').onclick=retry;
   const pct=Math.round(score/session.length*100);
   $('final').innerHTML=score+' / '+session.length+'<small>正答率 '+pct+'%</small>';
   const rv=$('review');
@@ -430,30 +446,37 @@ function showResult(){
 
 function showTestResult(){
   show('result');
-  const passed = (score===session.length);
-  const detail={};
-  CHAPTERS.forEach(function(c){ detail[c.key]={correct:0,total:0}; });
-  session.forEach(function(q){ const d=detail[q.chapter]; if(d){ d.total++; if(q.got) d.correct++; } });
-  // ローカル保存（ホーム表示用）
-  const t=LS.get('dq_test',{attempts:0,best:0,last:0,passed:false});
-  t.attempts++; t.last=score; t.best=Math.max(t.best,score); if(passed) t.passed=true;
-  LS.set('dq_test',t);
-  // DB保存（管理画面用）
-  saveTestResult(score, detail, passed);
-  // 表示
-  $('final').innerHTML=score+' / '+session.length+'<small>'+(passed?'🎉 合格！全問正解です':'不合格 — 全問正解で合格です')+'</small>';
-  let html='<h3>科目別の正答</h3>';
-  CHAPTERS.forEach(function(c){ const d=detail[c.key];
-    html+='<div class="rev"><b>'+c.no+'　'+esc(c.name)+'</b>：'+d.correct+' / '+d.total+'</div>'; });
-  if(!passed){
-    html+='<h3 style="margin-top:14px">不正解の問題</h3>'+sessionWrong.map(function(q){
-      return '<div class="rev"><div class="q">［'+q.chapter+'］'+esc(q.stem)+'</div>'+
-      '<div><b style="color:var(--accent)">正解：'+q.ans+'</b> '+esc(q.opts[q.ans-1])+'</div></div>'; }).join('');
+  // 初回ラウンドの正答（得点・科目別）を記録
+  if(testRound===1){
+    testFirstScore=score;
+    testFirstDetail={};
+    CHAPTERS.forEach(function(c){ testFirstDetail[c.key]={correct:0,total:0}; });
+    session.forEach(function(q){ const d=testFirstDetail[q.chapter]; if(d){ d.total++; if(q.got) d.correct++; } });
   }
-  $('review').innerHTML=html;
+  const remain=sessionWrong.slice();
   const rb=$('retryBtn');
-  if(passed){ rb.style.display='none'; }
-  else { rb.style.display=''; rb.textContent='再テスト（新しい40問）'; }
+  if(remain.length===0){
+    // 全問正解 → 修了（合格）
+    const t=LS.get('dq_test',{attempts:0,best:0,last:0,passed:false});
+    t.attempts++; t.last=testFirstScore; t.best=Math.max(t.best,testFirstScore); t.passed=true;
+    LS.set('dq_test',t);
+    saveTestResult(testFirstScore, testFirstDetail, true);
+    $('final').innerHTML='🎉 修了！<small>40問すべて正解しました（初回正答 '+testFirstScore+' / 40・'+testRound+'回で達成）</small>';
+    let html='<h3>初回の科目別正答</h3>';
+    CHAPTERS.forEach(function(c){ const d=testFirstDetail[c.key];
+      html+='<div class="rev"><b>'+c.no+'　'+esc(c.name)+'</b>：'+d.correct+' / '+d.total+'</div>'; });
+    $('review').innerHTML=html;
+    rb.style.display='none'; rb.onclick=retry;
+  } else {
+    // まだ間違いあり → 間違えた問題だけ再挑戦
+    $('final').innerHTML=(session.length-remain.length)+' / '+session.length+'<small>正解 — 残り '+remain.length+' 問を全問正解すると修了です</small>';
+    let html='<h3>もう一度挑戦する問題（解説）</h3>'+remain.map(function(q){
+      return '<div class="rev"><div class="q">［'+q.chapter+'］'+esc(q.stem)+'</div>'+
+      '<div><b style="color:var(--accent)">正解：'+q.ans+'</b> '+esc(q.opts[q.ans-1])+'</div>'+
+      '<div style="color:var(--mut);font-size:.85rem;margin-top:4px">'+esc(q.explanation)+'</div></div>'; }).join('');
+    $('review').innerHTML=html;
+    rb.style.display=''; rb.textContent='間違いを再挑戦（'+remain.length+'問）'; rb.onclick=retryWrong;
+  }
 }
 
 /* ---- DB同期（ログイン時のみ・Supabase）---- */
@@ -493,8 +516,7 @@ function renderTestCard(){
   $('tAttempts').textContent=t.attempts;
   $('tBest').textContent=t.attempts ? (t.best+' / 40') : '–';
   const s=$('testStatus');
-  if(t.passed){ s.textContent='合格'; s.className='tpill ok'; }
-  else if(t.attempts){ s.textContent='未合格'; s.className='tpill ng'; }
+  if(t.passed){ s.textContent='修了'; s.className='tpill ok'; }
   else { s.textContent='未受験'; s.className='tpill none'; }
 }
 window.DQonAuth=function(){ syncProgress(); };

@@ -78,7 +78,7 @@
       <div class="stat">
         <div><b id="cTotal">0</b><span>登録者数</span></div>
         <div><b id="cConfirmed">0</b><span>メール確認済み</span></div>
-        <div><b id="cPassed">0</b><span>認定テスト合格</span></div>
+        <div><b id="cPassed">0</b><span>認定テスト修了</span></div>
         <div><b id="cAdmin">0</b><span>管理者</span></div>
       </div>
 
@@ -189,8 +189,8 @@
   }
 
   function testCell(u){
-    if(u.test_passed) return '<span class="pill ok">合格</span> '+(u.test_best_score!=null?u.test_best_score+'/40':'');
-    if(u.test_attempts>0) return '<span class="pill no">未合格</span> 最高'+(u.test_best_score||0)+'/40（'+u.test_attempts+'回）';
+    if(u.test_passed) return '<span class="pill ok">修了</span> 初回正答 最高'+(u.test_best_score!=null?u.test_best_score:0)+'/40（'+(u.test_attempts||0)+'回）';
+    if(u.test_attempts>0) return '<span class="pill no">挑戦中</span> 初回正答 最高'+(u.test_best_score||0)+'/40';
     return '<span class="pill mut">未受験</span>';
   }
   function chCell(u,key,total){
@@ -232,7 +232,7 @@
     function st(u,k,f){ var s=(u.stats&&u.stats[k])||{}; return s[f]||0; }
     var rows=DATA.map(function(u){ return [
       u.full_name||"", u.email||"", u.role, u.email_confirmed_at?"確認済み":"未確認",
-      u.test_passed?"合格":(u.test_attempts>0?"未合格":"未受験"), u.test_best_score==null?"":u.test_best_score, u.test_attempts||0,
+      u.test_passed?"修了":(u.test_attempts>0?"挑戦中":"未受験"), u.test_best_score==null?"":u.test_best_score, u.test_attempts||0,
       st(u,"規則","learned"),st(u,"規則","ok"),
       st(u,"システム","learned"),st(u,"システム","ok"),
       st(u,"操縦者・運航体制","learned"),st(u,"操縦者・運航体制","ok"),
