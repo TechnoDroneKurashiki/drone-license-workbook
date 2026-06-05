@@ -172,7 +172,7 @@
           <div class="stat"><b id="tAttempts">0</b><span>修了回数</span></div>
           <div class="stat"><b id="tBest">–</b><span>初回正答（最高）</span></div>
         </div>
-        <button class="btn" style="width:auto;margin:0;margin-left:auto" onclick="startTest()">認定テストを開始</button>
+        <div id="testBtns" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
     </div>
 
@@ -369,10 +369,42 @@ function buildTest(){
   idx=0; score=0; sessionWrong=[];
   return true;
 }
-function startTest(){ lastSession=function(){return buildTest();}; run(); }
-// 間違えた問題だけを再挑戦（B方式：その回で全問正解するまで反復）
-function retryWrong(){
-  const wrong=sessionWrong.slice();
+/* ---- 認定テストの試行（attempt）履歴・中断再開 ---- */
+function getHistory(){ return LS.get('dq_test_history',[]); }
+function setHistory(h){ LS.set('dq_test_history',h); }
+function completedCount(){ return getHistory().filter(function(h){return h.completed;}).length; }
+function curAttempt(){ const h=getHistory(); const last=h[h.length-1]; return (last && !last.completed) ? last : null; }
+function saveActiveTest(){
+  if(!isTest) return;
+  LS.set('dq_test_active', {session:session, idx:idx, score:score, sessionWrong:sessionWrong,
+    testRound:testRound, testFirstScore:testFirstScore, testFirstDetail:testFirstDetail});
+}
+function clearActiveTest(){ try{ localStorage.removeItem('dq_test_active'); }catch(e){} }
+
+function startTest(){
+  // 進行中があれば確認（破棄して最初から）。試行番号は据え置き（中断は同じ回）
+  const h=getHistory();
+  const inProg = curAttempt();
+  if(inProg){ if(!confirm('進行中の認定テスト（'+inProg.n+'回目）を最初からやり直しますか？\\n※ 回数は増えません。')) return; }
+  const n = inProg ? inProg.n : (completedCount()+1);
+  const rec = {n:n, first_score:null, detail:null, rounds:0, completed:false,
+               completed_at:null, cur_round:1, answered:0, total:40, updated_at:new Date().toISOString()};
+  if(inProg){ h[h.length-1]=rec; } else { h.push(rec); }
+  setHistory(h);
+  clearActiveTest();
+  syncTest();
+  lastSession=function(){return buildTest();};
+  run();
+}
+function resumeTest(){
+  const a=LS.get('dq_test_active',null); if(!a){ startTest(); return; }
+  session=a.session; idx=a.idx; score=a.score; sessionWrong=a.sessionWrong;
+  testRound=a.testRound; testFirstScore=a.testFirstScore; testFirstDetail=a.testFirstDetail;
+  isTest=true; lastSession=function(){return buildTest();};
+  show('quiz'); renderQ();
+}
+// 間違えた問題だけで次ラウンドを準備（B方式：その回で全問正解するまで反復）
+function prepareNextRound(wrong){
   session=wrong.map(function(w){
     const q=DATA.find(function(d){return d.id===w.id;});
     let os=q.options.map(function(t,i){return {t:t,c:(i+1)===q.answer};});
@@ -382,8 +414,8 @@ function retryWrong(){
   });
   shuffle(session);
   testRound++; idx=0; score=0; sessionWrong=[];
-  show('quiz'); renderQ();
 }
+function goNextRound(){ show('quiz'); renderQ(); }
 function startChapter(key){ lastSession=function(){return buildSession(DATA.filter(q=>q.chapter===key),true,false);}; run(); }
 function startMini(){ lastSession=function(){return buildSession(DATA,true,false);}; run(); }
 function startAll(){ lastSession=function(){return buildSession(DATA,false,false);}; run(); }
@@ -393,7 +425,7 @@ function retry(){ run(); }
 
 /* ---- quiz play ---- */
 function show(which){ ['home','quiz','result'].forEach(s=>$(s).classList.toggle('hide', s!==which)); window.scrollTo(0,0); }
-function goHome(){ renderHome(); show('home'); }
+function goHome(){ syncTest(); renderHome(); show('home'); }
 
 function renderQ(){
   const q=session[idx];
@@ -410,6 +442,7 @@ function renderQ(){
   });
   const fb=$('fb'); fb.className='fb'; fb.innerHTML='';
   $('next').style.display='none';
+  if(isTest) saveActiveTest();
 }
 function answerQ(sel,btn){
   const q=session[idx];
@@ -421,6 +454,10 @@ function answerQ(sel,btn){
   if(!isTest){
     const p=progress[q.id]||{a:0,c:0,last:''};
     p.a++; if(ok) p.c++; p.last=ok?'o':'x'; progress[q.id]=p; LS.set('dq_progress',progress);
+  } else {
+    const h=getHistory(); const rec=h[h.length-1];
+    if(rec && !rec.completed){ rec.cur_round=testRound; rec.answered=idx+1; rec.total=session.length;
+      rec.updated_at=new Date().toISOString(); setHistory(h); }
   }
   const fb=$('fb'); fb.className='fb show '+(ok?'ok':'ng');
   fb.innerHTML='<div class="hd">'+(ok?'✅ 正解！':'❌ 不正解')+'（正解：'+q.ans+'）</div>'+esc(q.explanation);
@@ -453,29 +490,36 @@ function showTestResult(){
     CHAPTERS.forEach(function(c){ testFirstDetail[c.key]={correct:0,total:0}; });
     session.forEach(function(q){ const d=testFirstDetail[q.chapter]; if(d){ d.total++; if(q.got) d.correct++; } });
   }
+  // 履歴の現在の試行を更新
+  const h=getHistory(); let rec=h[h.length-1];
+  if(!rec || rec.completed){ rec={n:completedCount()+1, first_score:null, detail:null, rounds:0, completed:false, completed_at:null, cur_round:1, answered:0, total:40}; h.push(rec); }
+  if(testRound===1){ rec.first_score=testFirstScore; rec.detail=testFirstDetail; }
+  rec.rounds=testRound; rec.updated_at=new Date().toISOString();
   const remain=sessionWrong.slice();
   const rb=$('retryBtn');
   if(remain.length===0){
-    // 全問正解 → 修了（合格）
-    const t=LS.get('dq_test',{attempts:0,best:0,last:0,passed:false});
-    t.attempts++; t.last=testFirstScore; t.best=Math.max(t.best,testFirstScore); t.passed=true;
-    LS.set('dq_test',t);
-    saveTestResult(testFirstScore, testFirstDetail, true);
-    $('final').innerHTML='🎉 修了！<small>40問すべて正解しました（初回正答 '+testFirstScore+' / 40・'+testRound+'回で達成）</small>';
+    // 全問正解 → 修了
+    rec.completed=true; rec.completed_at=new Date().toISOString(); rec.answered=rec.total;
+    setHistory(h); clearActiveTest(); syncTest();
+    $('final').innerHTML='🎉 '+rec.n+'回目 修了！<small>40問すべて正解しました（初回正答 '+testFirstScore+' / 40・'+testRound+'ラウンドで達成）</small>';
     let html='<h3>初回の科目別正答</h3>';
     CHAPTERS.forEach(function(c){ const d=testFirstDetail[c.key];
       html+='<div class="rev"><b>'+c.no+'　'+esc(c.name)+'</b>：'+d.correct+' / '+d.total+'</div>'; });
     $('review').innerHTML=html;
     rb.style.display='none'; rb.onclick=retry;
   } else {
-    // まだ間違いあり → 間違えた問題だけ再挑戦
-    $('final').innerHTML=(session.length-remain.length)+' / '+session.length+'<small>正解 — 残り '+remain.length+' 問を全問正解すると修了です</small>';
+    // まだ間違いあり → 次ラウンドを準備（中断しても次ラウンドから再開できる）
+    const roundTotal=session.length, roundCorrect=roundTotal-remain.length;
+    prepareNextRound(remain);
+    rec.cur_round=testRound; rec.answered=0; rec.total=session.length;
+    setHistory(h); saveActiveTest(); syncTest();
+    $('final').innerHTML=roundCorrect+' / '+roundTotal+'<small>正解 — 残り '+remain.length+' 問を全問正解すると修了です</small>';
     let html='<h3>もう一度挑戦する問題（解説）</h3>'+remain.map(function(q){
       return '<div class="rev"><div class="q">［'+q.chapter+'］'+esc(q.stem)+'</div>'+
       '<div><b style="color:var(--accent)">正解：'+q.ans+'</b> '+esc(q.opts[q.ans-1])+'</div>'+
       '<div style="color:var(--mut);font-size:.85rem;margin-top:4px">'+esc(q.explanation)+'</div></div>'; }).join('');
     $('review').innerHTML=html;
-    rb.style.display=''; rb.textContent='間違いを再挑戦（'+remain.length+'問）'; rb.onclick=retryWrong;
+    rb.style.display=''; rb.textContent='間違いを再挑戦（'+remain.length+'問）'; rb.onclick=goNextRound;
   }
 }
 
@@ -493,33 +537,41 @@ function syncProgress(){
   window.__sb.from('user_progress').upsert({user_id:uid, stats:chapterStatsObj(),
     updated_at:new Date().toISOString()}).then(function(){},function(){});
 }
-function saveTestResult(scoreVal, detail, passed){
+function computeTestScalars(){
+  const h=getHistory(); const comp=h.filter(function(x){return x.completed;});
+  let best=0, last=null, passedAt=null;
+  h.forEach(function(x){ if(x.first_score!=null){ best=Math.max(best,x.first_score); last=x.first_score; } });
+  if(comp.length){ passedAt=comp[comp.length-1].completed_at; }
+  return {attempts:comp.length, best:best, last:last, passed:comp.length>0, passedAt:passedAt};
+}
+function syncTest(){
   const uid=currentUserId(); if(!uid || !window.__sb) return;
-  window.__sb.from('user_progress')
-    .select('test_attempts,test_best_score,test_passed,test_passed_at')
-    .eq('user_id',uid).maybeSingle().then(function(r){
-      const d=(r&&r.data)||{};
-      const attempts=(d.test_attempts||0)+1;
-      const best=Math.max(d.test_best_score||0, scoreVal);
-      const already=d.test_passed||false;
-      window.__sb.from('user_progress').upsert({
-        user_id:uid, stats:chapterStatsObj(),
-        test_attempts:attempts, test_last_score:scoreVal, test_best_score:best,
-        test_passed: already||passed,
-        test_passed_at: already ? d.test_passed_at : (passed ? new Date().toISOString() : null),
-        test_last_detail: detail, updated_at:new Date().toISOString()
-      }).then(function(){},function(){});
-    });
+  const s=computeTestScalars();
+  window.__sb.from('user_progress').upsert({
+    user_id:uid, stats:chapterStatsObj(), test_history:getHistory(),
+    test_attempts:s.attempts, test_last_score:s.last, test_best_score:s.best,
+    test_passed:s.passed, test_passed_at:s.passedAt, updated_at:new Date().toISOString()
+  }).then(function(){},function(){});
 }
 function renderTestCard(){
-  const t=LS.get('dq_test',{attempts:0,best:0,last:0,passed:false});
-  $('tAttempts').textContent=t.attempts;
-  $('tBest').textContent=t.attempts ? (t.best+' / 40') : '–';
-  const s=$('testStatus');
-  if(t.passed){ s.textContent='修了'; s.className='tpill ok'; }
+  const h=getHistory(); const comp=h.filter(function(x){return x.completed;});
+  $('tAttempts').textContent=comp.length;
+  let best=0, any=false; h.forEach(function(x){ if(x.first_score!=null){ best=Math.max(best,x.first_score); any=true; } });
+  $('tBest').textContent=any ? (best+' / 40') : '–';
+  const s=$('testStatus'); const inProg=curAttempt();
+  if(inProg){ s.textContent=inProg.n+'回目 挑戦中'; s.className='tpill ng'; }
+  else if(comp.length){ s.textContent='修了 '+comp.length+'回'; s.className='tpill ok'; }
   else { s.textContent='未受験'; s.className='tpill none'; }
+  const active=LS.get('dq_test_active',null);
+  const bw=$('testBtns');
+  if(active && inProg){
+    bw.innerHTML='<button class="btn" style="width:auto;margin:0" onclick="resumeTest()">続きから再開（'+inProg.n+'回目）</button>'+
+      '<button class="btn sec" style="width:auto;margin:0" onclick="startTest()">最初から</button>';
+  } else {
+    bw.innerHTML='<button class="btn" style="width:auto;margin:0" onclick="startTest()">'+(comp.length?((comp.length+1)+'回目を開始'):'認定テストを開始')+'</button>';
+  }
 }
-window.DQonAuth=function(){ syncProgress(); };
+window.DQonAuth=function(){ syncProgress(); syncTest(); };
 function resetProgress(){
   if(confirm('この端末の学習記録（進捗・要復習）をすべて消去します。よろしいですか？')){
     progress={}; LS.set('dq_progress',progress); syncProgress(); renderHome();

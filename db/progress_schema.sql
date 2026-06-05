@@ -18,6 +18,9 @@ create table if not exists public.user_progress (
   updated_at       timestamptz not null default now()
 );
 
+-- 認定テストの試行（attempt）履歴。各回ごとの進捗・結果を配列で保持。
+alter table public.user_progress add column if not exists test_history jsonb not null default '[]'::jsonb;
+
 alter table public.user_progress enable row level security;
 
 -- 本人のみ読み書き、管理者は全員分を閲覧可
@@ -34,7 +37,9 @@ create policy "up_update_self" on public.user_progress
   for update using (auth.uid() = user_id);
 
 -- 管理画面用：全受講者の進捗＋アカウント情報（管理者のみ）
-create or replace function public.admin_list_progress()
+-- ※ 返り値の列を変更したため、いったん DROP してから作成
+drop function if exists public.admin_list_progress();
+create function public.admin_list_progress()
 returns table (
   user_id uuid,
   email text,
@@ -46,6 +51,7 @@ returns table (
   test_best_score int,
   test_passed boolean,
   test_passed_at timestamptz,
+  test_history jsonb,
   progress_updated_at timestamptz,
   created_at timestamptz,
   email_confirmed_at timestamptz,
@@ -65,6 +71,7 @@ begin
            coalesce(up.test_attempts, 0),
            up.test_last_score, up.test_best_score,
            coalesce(up.test_passed, false), up.test_passed_at,
+           coalesce(up.test_history, '[]'::jsonb),
            up.updated_at,
            p.created_at, u.email_confirmed_at, u.last_sign_in_at
     from public.profiles p
