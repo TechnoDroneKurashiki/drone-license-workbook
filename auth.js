@@ -64,6 +64,8 @@
   // ---------- 画面：ログイン ----------
   function renderLogin() {
     window.__user = null;
+    var al = document.getElementById("adminLink");
+    if (al) al.style.display = "none";
     show(shell("ログイン",
       field("li_email", "メールアドレス", "email", "you@example.com") +
       field("li_pw", "パスワード", "password", "") +
@@ -194,6 +196,14 @@
     acctbar.style.display = "flex";
     var nm = (user && user.user_metadata && user.user_metadata.full_name) || (user && user.email) || "";
     acct.textContent = nm + " さん";
+    // 管理者だけに「管理者画面」リンクを表示
+    var al = document.getElementById("adminLink");
+    if (al) {
+      al.style.display = "none";
+      sb.from("profiles").select("role").eq("id", user.id).maybeSingle().then(function (r) {
+        if (r && r.data && r.data.role === "admin") al.style.display = "inline-block";
+      });
+    }
     // 履歴に残った認証トークンを URL から除去
     if (location.hash && /access_token|type=/.test(location.hash)) {
       history.replaceState(null, "", redirectBase());

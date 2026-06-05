@@ -159,6 +159,7 @@ HTML = r'''<!DOCTYPE html>
   </div>
   <div id="acctbar" style="display:none;align-items:center;gap:10px">
     <span id="acct" style="font-size:.8rem;color:var(--mut);font-weight:600"></span>
+    <a id="adminLink" href="管理者画面.html" class="btn sec" style="display:none;width:auto;margin:0;padding:6px 12px;font-size:.8rem;text-decoration:none">管理者画面</a>
     <button id="logout" class="btn sec" style="width:auto;margin:0;padding:6px 12px;font-size:.8rem">ログアウト</button>
   </div>
 </div></div>
@@ -411,8 +412,11 @@ function answerQ(sel,btn){
   const ok=(sel===q.ans);
   session[idx].got=ok;
   if(ok) score++; else { btn.classList.add('ng'); sessionWrong.push(q); }
-  const p=progress[q.id]||{a:0,c:0,last:''};
-  p.a++; if(ok) p.c++; p.last=ok?'o':'x'; progress[q.id]=p; LS.set('dq_progress',progress);
+  // 認定テストは別枠。通常の学習記録（科目別の学習状況）には合算しない
+  if(!isTest){
+    const p=progress[q.id]||{a:0,c:0,last:''};
+    p.a++; if(ok) p.c++; p.last=ok?'o':'x'; progress[q.id]=p; LS.set('dq_progress',progress);
+  }
   const fb=$('fb'); fb.className='fb show '+(ok?'ok':'ng');
   fb.innerHTML='<div class="hd">'+(ok?'✅ 正解！':'❌ 不正解')+'（正解：'+q.ans+'）</div>'+esc(q.explanation);
   $('sc').textContent='正解 '+score;
@@ -507,7 +511,7 @@ function renderTestCard(){
 window.DQonAuth=function(){ syncProgress(); };
 function resetProgress(){
   if(confirm('この端末の学習記録（進捗・要復習）をすべて消去します。よろしいですか？')){
-    progress={}; LS.set('dq_progress',progress); renderHome();
+    progress={}; LS.set('dq_progress',progress); syncProgress(); renderHome();
   }
 }
 
