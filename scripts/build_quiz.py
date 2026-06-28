@@ -47,7 +47,7 @@ HTML = r'''<!DOCTYPE html>
 
   /* dashboard stats */
   .dash{ display:flex; align-items:center; gap:26px; flex-wrap:wrap; }
-  .ring{ position:relative; width:104px; height:104px; flex:none; }
+  .ring{ position:relative; width:118px; height:118px; flex:none; }
   .ring .lab{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; line-height:1.1; }
   .ring .lab b{ font-size:1.3rem; font-weight:800; line-height:1.05; }
   .ring .lab span{ font-size:.66rem; color:var(--mut); line-height:1; margin-top:1px; }
@@ -190,11 +190,11 @@ HTML = r'''<!DOCTYPE html>
     <div class="card">
       <div class="dash">
         <div class="ring">
-          <svg width="104" height="104" viewBox="0 0 104 104">
-            <circle cx="52" cy="52" r="44" fill="none" stroke="var(--line)" stroke-width="9"/>
-            <circle id="ring" cx="52" cy="52" r="44" fill="none" stroke="var(--accent)" stroke-width="9"
-                    stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"
-                    transform="rotate(-90 52 52)" style="transition:stroke-dashoffset .5s"/>
+          <svg width="118" height="118" viewBox="0 0 118 118">
+            <circle cx="59" cy="59" r="50" fill="none" stroke="var(--line)" stroke-width="8"/>
+            <circle id="ring" cx="59" cy="59" r="50" fill="none" stroke="var(--accent)" stroke-width="8"
+                    stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="314.16"
+                    transform="rotate(-90 59 59)" style="transition:stroke-dashoffset .5s"/>
           </svg>
           <div class="lab"><b id="accPct">0%</b><span>正答率</span></div>
         </div>
@@ -280,7 +280,7 @@ const CHAPTERS=[
 ];
 const THEMES={blue:'#2563eb', teal:'#0d9488', orange:'#ea580c'};
 const SOFT={blue:'#dbeafe', teal:'#ccfbf1', orange:'#ffedd5'};
-const RING_C=276.46;
+const RING_C=314.16;
 
 const LS={ get:(k,d)=>{ try{ const v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } },
            set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)) };
