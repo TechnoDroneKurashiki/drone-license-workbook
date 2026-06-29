@@ -14,7 +14,7 @@
   var logoutBtn = document.getElementById("logout");
 
   // ---- 設定チェック ----
-  if (!window.SUPA_URL || /ここに/.test(window.SUPA_URL) || !window.supabase) {
+  if (!window.SUPA_URL || /ここに/.test(window.SUPA_URL)) {
     app.style.display = "none";
     gate.innerHTML =
       '<div class="card" style="margin-top:24px">' +
@@ -24,8 +24,11 @@
     return;
   }
 
-  var sb = window.supabase.createClient(window.SUPA_URL, window.SUPA_ANON);
-  window.__sb = sb;
+  // Supabase クライアントはライブラリ読込後に生成（下部の初期化処理で設定）
+  var sb = null;
+  function notReady() {
+    msg("読み込み中です。数秒後にもう一度お試しください。", "err");
+  }
 
   var PW_RE = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
   var pwHint = "8文字以上で、英数字・大文字・記号をそれぞれ1つ以上含めてください。";
@@ -43,9 +46,9 @@
     );
   }
   function field(id, label, type, ph) {
-    // パスワード欄はクリック（フォーカス）で平文表示、フォーカスを外すと再びマスク
+    // パスワード欄はクリック（フォーカス）で平文表示（フォーカス時に表示したまま）
     var reveal = (type === "password")
-      ? " onfocus=\"this.type='text'\" onblur=\"this.type='password'\""
+      ? " onfocus=\"this.type='text'\""
       : "";
     return (
       '<label style="display:block;font-size:.82rem;color:var(--mut);margin:12px 0 5px">' + label + "</label>" +
@@ -84,6 +87,7 @@
     var email = document.getElementById("li_email").value.trim();
     var pw = document.getElementById("li_pw").value;
     if (!email || !pw) { msg("メールアドレスとパスワードを入力してください。", "err"); return; }
+    if (!sb) { notReady(); return; }
     msg("確認中…");
     sb.auth.signInWithPassword({ email: email, password: pw }).then(function (r) {
       if (r.error) {
@@ -118,6 +122,7 @@
     if (!email) { msg("メールアドレスを入力してください。", "err"); return; }
     if (!PW_RE.test(pw)) { msg("パスワードの条件を満たしていません。" + pwHint, "err"); return; }
     if (pw !== pw2) { msg("確認用パスワードが一致しません。", "err"); return; }
+    if (!sb) { notReady(); return; }
     msg("登録中…");
     sb.auth.signUp({
       email: email, password: pw,
@@ -141,6 +146,7 @@
       '<button class="btn" id="aw_login">ログイン画面へ</button>'
     ));
     document.getElementById("aw_resend").onclick = function () {
+      if (!sb) { notReady(); return; }
       msg("再送中…");
       sb.auth.resend({ type: "signup", email: email, options: { emailRedirectTo: redirectBase() } }).then(function (r) {
         msg(r.error ? ("再送に失敗しました：" + r.error.message) : "確認メールを再送しました。", r.error ? "err" : "ok");
@@ -160,6 +166,7 @@
     document.getElementById("fg_btn").onclick = function () {
       var email = document.getElementById("fg_email").value.trim();
       if (!email) { msg("メールアドレスを入力してください。", "err"); return; }
+      if (!sb) { notReady(); return; }
       msg("送信中…");
       sb.auth.resetPasswordForEmail(email, { redirectTo: redirectBase() }).then(function (r) {
         msg(r.error ? ("送信に失敗しました：" + r.error.message) : "再設定メールを送信しました。メールのリンクから新しいパスワードを設定してください。", r.error ? "err" : "ok");
@@ -181,6 +188,7 @@
       var pw2 = document.getElementById("rs_pw2").value;
       if (!PW_RE.test(pw)) { msg("パスワードの条件を満たしていません。" + pwHint, "err"); return; }
       if (pw !== pw2) { msg("確認用パスワードが一致しません。", "err"); return; }
+      if (!sb) { notReady(); return; }
       msg("変更中…");
       sb.auth.updateUser({ password: pw }).then(function (r) {
         if (r.error) { msg("変更に失敗しました：" + r.error.message, "err"); return; }
@@ -215,19 +223,29 @@
   }
 
   logoutBtn.onclick = function () {
+    if (!sb) { renderLogin(); return; }
     sb.auth.signOut().then(function () { renderLogin(); });
   };
 
-  // ---------- 認証状態の監視 ----------
-  sb.auth.onAuthStateChange(function (event, session) {
-    if (event === "PASSWORD_RECOVERY") { renderReset(); return; }
-    if (event === "SIGNED_OUT") { renderLogin(); return; }
-    if (session && session.user) { enterApp(session.user); }
-  });
+  // ---- まずログイン画面を即時表示（ライブラリ読込を待たない）----
+  renderLogin();
 
-  // 初期表示
-  sb.auth.getSession().then(function (r) {
-    if (r.data.session && r.data.session.user) { enterApp(r.data.session.user); }
-    else { renderLogin(); }
-  });
+  // ---- Supabase ライブラリの読み込みを待ってから初期化 ----
+  (function waitSupabase(n) {
+    if (window.supabase) {
+      sb = window.supabase.createClient(window.SUPA_URL, window.SUPA_ANON);
+      window.__sb = sb;
+      sb.auth.onAuthStateChange(function (event, session) {
+        if (event === "PASSWORD_RECOVERY") { renderReset(); return; }
+        if (event === "SIGNED_OUT") { renderLogin(); return; }
+        if (session && session.user) { enterApp(session.user); }
+      });
+      sb.auth.getSession().then(function (r) {
+        if (r.data.session && r.data.session.user) { enterApp(r.data.session.user); }
+      });
+      return;
+    }
+    if (n > 300) { return; } // 約30秒で諦める（ログイン画面は表示済み）
+    setTimeout(function () { waitSupabase(n + 1); }, 100);
+  })(0);
 })();
