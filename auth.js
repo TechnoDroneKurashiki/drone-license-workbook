@@ -43,9 +43,13 @@
     );
   }
   function field(id, label, type, ph) {
+    // パスワード欄はクリック（フォーカス）で平文表示、フォーカスを外すと再びマスク
+    var reveal = (type === "password")
+      ? " onfocus=\"this.type='text'\" onblur=\"this.type='password'\""
+      : "";
     return (
       '<label style="display:block;font-size:.82rem;color:var(--mut);margin:12px 0 5px">' + label + "</label>" +
-      '<input id="' + id + '" type="' + type + '" placeholder="' + (ph || "") + '" autocomplete="off" ' +
+      '<input id="' + id + '" type="' + type + '"' + reveal + ' placeholder="' + (ph || "") + '" autocomplete="off" ' +
       'style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)">'
     );
   }
