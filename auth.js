@@ -47,6 +47,12 @@
   }
   function field(id, label, type, ph) {
     var lab = '<label style="display:block;font-size:.82rem;color:var(--mut);margin:12px 0 5px">' + label + "</label>";
+    // 自動入力（パスワードマネージャ）が正しく機能するよう適切な autocomplete を付与
+    var ac;
+    if (type === "email") ac = "username";
+    else if (type === "password") ac = /^(rg_|rs_)/.test(id) ? "new-password" : "current-password";
+    else if (id === "rg_name") ac = "name";
+    else ac = "off";
     if (type === "password") {
       // 初期はマスク。「表示」ボタンを押したときだけ平文表示（再度押すと隠す）
       var toggle = '<button type="button" tabindex="-1" onclick="' +
@@ -55,7 +61,7 @@
       return (
         lab +
         '<div style="position:relative">' +
-        '<input id="' + id + '" type="password" placeholder="' + (ph || "") + '" autocomplete="off" ' +
+        '<input id="' + id + '" type="password" placeholder="' + (ph || "") + '" autocomplete="' + ac + '" ' +
         'style="width:100%;padding:11px 52px 11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)">' +
         toggle +
         '</div>'
@@ -63,7 +69,7 @@
     }
     return (
       lab +
-      '<input id="' + id + '" type="' + type + '" placeholder="' + (ph || "") + '" autocomplete="off" ' +
+      '<input id="' + id + '" type="' + type + '" placeholder="' + (ph || "") + '" autocomplete="' + ac + '" ' +
       'style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)">'
     );
   }
@@ -100,13 +106,35 @@
     if (!email || !pw) { msg("メールアドレスとパスワードを入力してください。", "err"); return; }
     if (!sb) { notReady(); return; }
     msg("確認中…");
+    attemptLogin(email, pw, false);
+  }
+  function attemptLogin(email, pw, triedTrim) {
     sb.auth.signInWithPassword({ email: email, password: pw }).then(function (r) {
       if (r.error) {
-        if (/confirm/i.test(r.error.message)) { renderAwait(email, true); }
-        else { msg("ログインできませんでした。メールアドレスまたはパスワードをご確認ください。", "err"); }
+        var m = r.error.message || "";
+        var st = r.error.status;
+        if (/confirm/i.test(m)) { renderAwait(email, true); return; }
+        if (st === 429 || /rate|too many/i.test(m)) {
+          msg("試行回数が多すぎます。1分ほど待ってから、もう一度お試しください。", "err"); return;
+        }
+        if (/invalid login credentials/i.test(m)) {
+          // コピー時の前後空白・改行を自動で除いて1回だけ再試行
+          var pwt = pw.replace(/^[\s　]+|[\s　]+$/g, "");
+          if (!triedTrim && pwt !== pw) { attemptLogin(email, pwt, true); return; }
+          var hint = "";
+          if (/[０-９Ａ-Ｚａ-ｚ　]/.test(pw)) {
+            hint = "（全角の数字・英字・スペースが含まれています。半角で入力してください）";
+          }
+          msg("メールアドレスまたはパスワードが正しくありません。" + hint +
+              "［表示］ボタンで入力内容を確認できます。", "err");
+          return;
+        }
+        msg("ログインに失敗しました：" + m, "err");
         return;
       }
       enterApp(r.data.user);
+    }, function () {
+      msg("通信エラーが発生しました。ネットワーク接続をご確認のうえ再度お試しください。", "err");
     });
   }
 
