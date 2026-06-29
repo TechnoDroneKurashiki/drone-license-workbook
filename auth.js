@@ -46,13 +46,24 @@
     );
   }
   function field(id, label, type, ph) {
-    // パスワード欄はクリック（フォーカス）で平文表示（フォーカス時に表示したまま）
-    var reveal = (type === "password")
-      ? " onfocus=\"this.type='text'\""
-      : "";
+    var lab = '<label style="display:block;font-size:.82rem;color:var(--mut);margin:12px 0 5px">' + label + "</label>";
+    if (type === "password") {
+      // 初期はマスク。「表示」ボタンを押したときだけ平文表示（再度押すと隠す）
+      var toggle = '<button type="button" tabindex="-1" onclick="' +
+        "var i=this.parentNode.querySelector('input'); var p=i.type==='password'; i.type=p?'text':'password'; this.textContent=p?'隠す':'表示';" +
+        '" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--accent);font-size:.78rem;font-weight:700;cursor:pointer;padding:4px 8px">表示</button>';
+      return (
+        lab +
+        '<div style="position:relative">' +
+        '<input id="' + id + '" type="password" placeholder="' + (ph || "") + '" autocomplete="off" ' +
+        'style="width:100%;padding:11px 52px 11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)">' +
+        toggle +
+        '</div>'
+      );
+    }
     return (
-      '<label style="display:block;font-size:.82rem;color:var(--mut);margin:12px 0 5px">' + label + "</label>" +
-      '<input id="' + id + '" type="' + type + '"' + reveal + ' placeholder="' + (ph || "") + '" autocomplete="off" ' +
+      lab +
+      '<input id="' + id + '" type="' + type + '" placeholder="' + (ph || "") + '" autocomplete="off" ' +
       'style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)">'
     );
   }
